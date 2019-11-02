@@ -38,7 +38,6 @@
     "@material-ui/icons": "^4.5.1",
     "@webpack-blocks/babel": "^2.0.1",
     "babel-loader": "^8.0.6",
-    "core-js": "^3.3.5",
     "gh-pages": "^2.1.1",
     "react": "^16.11.0",
     "react-dom": "^16.11.0",
@@ -47,7 +46,8 @@
   },
   "peerDependencies": {
     "@material-ui/core": "^4.5.1",
-    "react": "16.x"
+    "react": "16.x",
+    "core-js": "^3.3.5"
   },
   "dependencies": {
     "prop-types": "^15.7.2"
