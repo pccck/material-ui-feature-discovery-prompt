@@ -1,25 +1,18 @@
 import React, { Component } from 'react'
 import PropTypes from 'prop-types'
 import { render, unmountComponentAtNode } from 'react-dom'
-import Circles from './Circles'
+import { withTheme } from '@material-ui/core/styles';
+import Portal from '@material-ui/core/Portal';
+import Circles from './Circles';
 
 /**
  * Material Design feature discovery prompt
  * @see [Feature discovery](https://material.io/archive/guidelines/growth-communications/feature-discovery.html)
  */
-export default class FeatureDiscoveryPrompt extends Component {
+export class FeatureDiscoveryPrompt extends Component {
   constructor (props) {
-    super(props)
-
-    this.state = {
-      pos: {
-        top: 1,
-        right: 1,
-        bottom: 1,
-        left: 1,
-        width: 1
-      }
-    }
+    super(props);
+    this.ref = React.createRef()
   }
 
   componentDidMount () {
@@ -29,57 +22,51 @@ export default class FeatureDiscoveryPrompt extends Component {
     this.portal.style.zIndex = 1
     this.portal.style.top = 0
     this.portal.style.left = 0
-    this.renderCircle()
   }
+
 
   componentWillUnmount () {
     unmountComponentAtNode(this.portal)
     this.portal = null
   }
 
-  componentWillReceiveProps (nextProps) {
-    if (nextProps.open && !this.props.open) {
-      this.circles.open()
-    } else if (!nextProps.open && this.props.open) {
-      this.circles.close()
-    }
-  }
-
-  componentDidUpdate () {
-    this.renderCircle()
-  }
-
-  renderCircle () {
-    if (this.circles == null) {
-      const {
-        backgroundColor,
-        description,
-        onClose,
-        title
-      } = this.props
-
-      render((
-        <Circles
-          backgroundColor={backgroundColor}
-          description={description}
-          element={this}
-          onClose={onClose}
-          ref={(ref) => { this.circles = ref }}
-          title={title}
-        />
-      ), this.portal)
-    }
-  }
-
   render () {
+    const { theme, children, open, color, innerColor, description, title, onClose } = this.props;
     const child = React.Children.only(this.props.children)
-    return React.cloneElement(child, {
-      style: {
-        ...child.props.style,
-        position: child.props.style != null && child.props.style.position != null && child.props.style.position !== 'static' ? child.props.style.position : 'relative',
-        zIndex: 2
-      }
-    })
+    return (
+      <React.Fragment>
+        {
+          <div ref={(ref) => { this.promptRef = ref }}>
+            {children}
+          </div>
+        }
+        {
+          open && 
+          <Portal>
+            <Circles
+              backgroundColor={theme.palette[color].main}
+              innerColor={innerColor}
+              description={description}
+              element={this.promptRef}
+              onClose={onClose}
+              open={open}
+              ref={(ref) => { this.circles = ref }}
+              title={title}
+            >     
+            { 
+              React.cloneElement(child, {
+                onClick:null,
+                style: {...child.props.style, pointerEvents: 'none'},
+                id: child.props.id ? `cloneOf-${child.props.id}` : null,
+                name: child.props.name ? `cloneOf-${child.props.name}` : null,
+                key: child.props.key ? `cloneOf-${child.props.key}` : null,
+              })
+             }
+            </Circles>
+          </Portal>
+        }
+      </React.Fragment>
+    )
   }
 }
 
@@ -95,5 +82,11 @@ FeatureDiscoveryPrompt.propTypes = {
   /** Defines the title text **/
   title: PropTypes.string.isRequired,
   /** Defines the description text **/
-  description: PropTypes.string.isRequired
+  description: PropTypes.string.isRequired,
+  /**  **/
+  color: PropTypes.oneOf(['primary', 'secondary']),
+  /**  **/
+  innerColor: PropTypes.string
 }
+
+export default withTheme(FeatureDiscoveryPrompt);

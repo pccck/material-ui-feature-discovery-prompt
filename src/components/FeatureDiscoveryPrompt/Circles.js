@@ -1,10 +1,11 @@
 import React, { Component } from 'react'
 import Typography from '@material-ui/core/Typography';
+import { withTheme } from '@material-ui/core/styles';
 import { findDOMNode } from 'react-dom'
 import PropTypes from 'prop-types'
 import injectStyle from './injectStyle'
 
-export default class Circles extends Component {
+export class Circles extends Component {
   constructor (props) {
     super(props)
     injectStyle(`
@@ -31,53 +32,78 @@ export default class Circles extends Component {
       this.onResize(window.innerWidth)
     }
     this.handleClick = (e) => {
-      if(!this.node.contains(e.target)){
+      if(!this.node || !this.node.contains(e.target)){
         this.props.onClose()
       }
     }
   }
 
   onResize () {
-    this.getComponentPosition()
+    const pos = this.getComponentPosition();
     const vw = (window.innerWidth * window.devicePixelRatio)
     const vh = (window.innerHeight * window.devicePixelRatio)
-    const drawTextAboveCenter = ((vh / 2) / this.state.pos.top < 1.0)
-    const drawTextLeftOfCenter = ((vw / 2) / this.state.pos.top > 1.0)
-    //Todo: check the other side
-    const minimalDistanceToViewport = vw - (this.state.pos.left + (this.state.pos.width / 2))
-    this.setState({drawTextAboveCenter, drawTextLeftOfCenter, minimalDistanceToViewport})
+    this.setState({ pos, vw, vh})
   }
 
   getStyles () {
-    const {backgroundColor} = this.props
-    const {pos, open, drawTextAboveCenter, drawTextLeftOfCenter, minimalDistanceToViewport} = this.state
+    const { theme, backgroundColor, open, innerColor = "white" } = this.props
+    const {pos, vw, vh} = this.state
+    const drawTextAboveCenter = ((vh / 2) / pos.top < 1.0)
+    //const drawTextLeftOfCenter = ((vw / 2) / pos.left < 1.0)
     const circleSize = pos.width + 40
-    const outerCircleSize = Math.min(window.innerWidth, 900)
+    const outerCircleSize = Math.min(window.innerWidth*2, 1200)
     const textBoxHeight = 100
-    const textBoxPaddingAtCircle = (900 * (1 / outerCircleSize)) * 50
-    const textBoxPadding = 20
-    const textBoxWidth = ((outerCircleSize / 2) + Math.min(minimalDistanceToViewport, (outerCircleSize / 2))) - (textBoxPaddingAtCircle + textBoxPadding)
 
+    let textBoxTop = pos.height /2  + (circleSize / 2 + 20)
+    if (drawTextAboveCenter) {
+      textBoxTop = textBoxTop * -1 - textBoxHeight
+    }
+
+    // Calculate chord length near the narrowest part of the text box to approximate correct width
+    const textBoxWidth = 2 * Math.sqrt(Math.pow(outerCircleSize/2, 2) - Math.pow(Math.abs(textBoxTop + 10), 2));
+
+    // Set the text box to span the chord of the circle
+    const textBoxLeft = pos.width /2 + -1 * (textBoxWidth / 2)
+
+    // Add padding to prevent going out of the viewport
+    const leftOverFlow = (pos.x + pos.width / 2) - (textBoxWidth / 2)
+    const textBoxLeftPadding = 40 + (leftOverFlow < 0 ? leftOverFlow * -1 : 0)
+    
+    const rightOverFlow = (pos.x + pos.width / 2) + (textBoxWidth / 2) - vw
+    const textBoxRightPadding = 40 + (rightOverFlow > 0 ? rightOverFlow : 0)
+    
     return {
       root: {
-        zIndex: 1000
+        zIndex: 1000,
+        position: 'absolute',
+        top: pos.top,
+        left: pos.left,
+        width: pos.width,
+        height: pos.height,
+      },
+      cloneContainer: {
+        width: pos.width,
+      },
+      cloneWrapper: {
       },
       circles: {
-        position: 'absolute',
-        top: pos.top - 20,
-        left: pos.left - 20,
         opacity: open ? 1 : 0,
-        pointerEvents: open ? 'inherit' : 'none'
+        pointerEvents: open ? 'inherit' : 'none',
       },
       pulseInnerCircle: {
         position: 'absolute',
         transformOrigin: 'center center',
         height: `${circleSize}px`,
         width: `${circleSize}px`,
-        borderRadius: '50%',
-        backgroundColor: 'white',
-        animation: open ? 'innerPulse 872ms 1.2s cubic-bezier(0.4, 0, 0.2, 1) alternate infinite' : null,
+        top: 0,
+        bottom: 0,
+        left: -20,
+        right: 0,
+        margin: 'auto',
         transform: open ? 'scale(1)' : 'scale(0)',
+        borderRadius: '50%',
+        backgroundColor: innerColor,
+        animation: open ? 'innerPulse 872ms 1.2s cubic-bezier(0.4, 0, 0.2, 1) alternate infinite' : null,
         transition: 'transform 225ms cubic-bezier(0.4, 0, 0.2, 1)'
       },
       pulseOuterCircle: {
@@ -85,36 +111,42 @@ export default class Circles extends Component {
         transformOrigin: 'center center',
         height: `${circleSize}px`,
         width: `${circleSize}px`,
+        top: 0,
+        bottom: 0,
+        left: -20,
+        right: 0,
+        margin: 'auto',
         borderRadius: '50%',
-        backgroundColor: 'white',
+        backgroundColor: innerColor,
         opacity: 0,
         animation: open ? 'outerPulse 1744ms 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite' : null
       },
       outerCircle: {
         position: 'absolute',
         transformOrigin: 'center center',
-        transform: open ? 'scale(1.0)' : 'scale(0.8)',
         transition: 'transform 225ms cubic-bezier(0.4, 0, 0.2, 1), opacity 225ms cubic-bezier(0.4, 0, 0.2, 1)',
-        marginTop: `-${(outerCircleSize / 2) - (circleSize / 2)}px`,
-        marginLeft: `-${(outerCircleSize / 2) - (circleSize / 2)}px`,
+        top: '50%',
+        left: '50%',
+        transform: `translate(-50%, -50%) ${open ? 'scale(1.0)' : 'scale(0.8)'}`,
         height: `${outerCircleSize}px`,
         width: `${outerCircleSize}px`,
         borderRadius: '50%',
         backgroundColor,
-        opacity: open ? 0.9 : 0
+        opacity: open ? 0.98 : 0,
+        boxShadow: theme.shadows[6]
       },
       textBox: {
-        fontFamily: 'Roboto',
-        position: 'relative',
+        position: 'absolute',
+        boxSizing: 'border-box',
         zIndex: 25000,
-        paddingLeft: textBoxPaddingAtCircle,
-        paddingRight: textBoxPadding,
         width: textBoxWidth ? textBoxWidth : 0,
         height: textBoxHeight,
-        marginTop: drawTextAboveCenter ? (outerCircleSize / 2) - (circleSize / 2) - textBoxHeight - 20 : (outerCircleSize / 2) + (circleSize / 2) + 20,
-        //marginLeft: drawTextLeftOfCenter ? (outerCircleSize / 2) + (circleSize / 2) : (outerCircleSize / 2) - (circleSize / 2) - textBoxHeight,
+        paddingLeft: textBoxLeftPadding,
+        paddingRight: textBoxRightPadding,
+        top: 0,
+        left: 0,
+        transform: `translate(${textBoxLeft}px, ${textBoxTop}px)`,
         color: 'white',
-        fontSize: '16pt'
       }
     }
   }
@@ -132,23 +164,38 @@ export default class Circles extends Component {
     }
   }
 
+  UNSAFE_componentWillReceiveProps(nextProps) {
+    if (nextProps.open && !this.props.open) {
+      this.open()
+    } else if (!nextProps.open && this.props.open) {
+      this.close()
+    }
+  }
+
   componentDidMount () {
-    this.handleResize()
+    this.handleResize();
+    if (this.props.open) { 
+      this.open();
+    }
     window.addEventListener('resize', this.handleResize)
     window.addEventListener('scroll', this.handleResize)
     window.addEventListener('mousedown', this.handleClick, false)
     this.content = findDOMNode(this.props.element)
     this.setState({pos: this.content.getBoundingClientRect()})
     this.updateInterval = setInterval(() => {
-      this.getComponentPosition()
-    }, 50)
+      if (this.props.open) {
+        this.handleResize()
+      }
+    }, 250)
   }
 
   getComponentPosition () {
-    if (this.state.open) {
+    if (!!this.content) {
       const pos = this.content.getBoundingClientRect()
-      if (pos.top !== this.state.pos.top || pos.left !== this.state.pos.left) {
-        this.setState({pos})
+      return pos;
+    } else {
+      return {
+        top: 0, left: 0, width: 0, right: 0, height: 0, height: 0, bottom: 0
       }
     }
   }
@@ -163,18 +210,24 @@ export default class Circles extends Component {
 
   render () {
     const styles = this.getStyles()
-
+    if (!this.state.pos || (this.state.pos.bottom === 0 && this.state.pos.top === 0 && this.state.pos.left === 0 && this.state.pos.right === 0)) {
+      return null;
+    }
     return (
       <div ref={node => this.node = node} style={styles.root}>
         <div style={styles.circles}>
           <div style={styles.outerCircle}>
-            <div style={styles.textBox}>
-              <Typography variant='title' style={{color: 'white'}}>{this.props.title}</Typography><br/>
-              <Typography variant='body1' style={{color: 'white'}}>{this.props.description}</Typography>
-            </div>
           </div>
-          <div style={styles.pulseInnerCircle}/>
-          <div style={styles.pulseOuterCircle}/>
+        </div>
+        <div style={styles.textBox}>
+          <Typography variant='h6' style={{color: 'white'}}>{this.props.title}</Typography><br/>
+          <Typography variant='body1' style={{color: 'white'}}>{this.props.description}</Typography>
+        </div>
+        <div style={styles.pulseOuterCircle}/>
+        <div style={styles.pulseInnerCircle}/>
+        
+        <div style={styles.cloneContainer}>
+            { this.props.open && this.props.children }
         </div>
       </div>
     )
@@ -191,3 +244,5 @@ Circles.propTypes = {
   /** Defines the description text **/
   description: PropTypes.string.isRequired
 }
+
+export default withTheme(Circles);
