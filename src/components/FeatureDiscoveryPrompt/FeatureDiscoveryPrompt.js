@@ -1,9 +1,13 @@
 import React, { Component } from 'react'
 import PropTypes from 'prop-types'
-import { render, unmountComponentAtNode } from 'react-dom'
+import { unmountComponentAtNode } from 'react-dom'
 import { withTheme } from '@material-ui/core/styles';
 import Portal from '@material-ui/core/Portal';
 import Circles from './Circles';
+
+function isElement(element) {
+  return element instanceof Element || element instanceof HTMLDocument;  
+}
 
 /**
  * Material Design feature discovery prompt
@@ -12,8 +16,9 @@ import Circles from './Circles';
 export class FeatureDiscoveryPrompt extends Component {
   constructor (props) {
     super(props);
-    this.ref = React.createRef()
+    this.promptRef = React.createRef()
   }
+
 
   componentDidMount () {
     this.portal = document.createElement('div')
@@ -32,40 +37,49 @@ export class FeatureDiscoveryPrompt extends Component {
 
   render () {
     const { theme, children, open, color, innerColor, description, title, onClose } = this.props;
-    const child = React.Children.only(this.props.children)
+    const child = React.Children.only(children);
+    let ref;
+    if (!!this.promptRef.current) {
+      if (isElement(this.promptRef.current)) {
+        ref = this.promptRef.current;
+      } else {
+        if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+          console.warn('material-ui-feature-discovery-prompt: the child of a FeatureDiscoveryPrompt needs to be a DOM element.')
+        }
+      }
+    }
+    const styles = {}
+    if (open) {
+      styles.opacity = 0
+    }
     return (
-      <React.Fragment>
+      <div>
+        {React.cloneElement(child, {ref: this.promptRef, style:styles})}
         {
-          <div ref={(ref) => { this.promptRef = ref }}>
-            {children}
-          </div>
+          !!open && !!ref &&
+          <Portal container={this.portal}>
+          <Circles
+            backgroundColor={theme.palette[color].main}
+            innerColor={innerColor}
+            description={description}
+            element={ref}
+            onClose={onClose}
+            open={open}
+            title={title}
+          >     
+          { 
+            React.cloneElement(child, {
+              onClick: e => {onClose();child.props.onClick(e)},
+              style: {...child.props.style, position: 'relative', top:0 , left:0, right:0, bottom:0},
+              id: child.props.id ? `cloneOf-${child.props.id}` : null,
+              name: child.props.name ? `cloneOf-${child.props.name}` : null,
+              key: child.props.key ? `cloneOf-${child.props.key}` : null,
+            })
+           }
+          </Circles>
+        </Portal>
         }
-        {
-          open && 
-          <Portal>
-            <Circles
-              backgroundColor={theme.palette[color].main}
-              innerColor={innerColor}
-              description={description}
-              element={this.promptRef}
-              onClose={onClose}
-              open={open}
-              ref={(ref) => { this.circles = ref }}
-              title={title}
-            >     
-            { 
-              React.cloneElement(child, {
-                onClick:null,
-                style: {...child.props.style, pointerEvents: 'none'},
-                id: child.props.id ? `cloneOf-${child.props.id}` : null,
-                name: child.props.name ? `cloneOf-${child.props.name}` : null,
-                key: child.props.key ? `cloneOf-${child.props.key}` : null,
-              })
-             }
-            </Circles>
-          </Portal>
-        }
-      </React.Fragment>
+      </div>
     )
   }
 }

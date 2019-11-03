@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import Typography from '@material-ui/core/Typography';
 import { withTheme } from '@material-ui/core/styles';
-import { findDOMNode } from 'react-dom'
+import ClickAwayListener from '@material-ui/core/ClickAwayListener';
 import PropTypes from 'prop-types'
 import injectStyle from './injectStyle'
 
@@ -30,11 +30,6 @@ export class Circles extends Component {
     }
     this.handleResize = () => {
       this.onResize(window.innerWidth)
-    }
-    this.handleClick = (e) => {
-      if(!this.node || !this.node.contains(e.target)){
-        this.props.onClose()
-      }
     }
   }
 
@@ -67,10 +62,10 @@ export class Circles extends Component {
 
     // Add padding to prevent going out of the viewport
     const leftOverFlow = (pos.x + pos.width / 2) - (textBoxWidth / 2)
-    const textBoxLeftPadding = 40 + (leftOverFlow < 0 ? leftOverFlow * -1 : 0)
+    const textBoxLeftPadding = 64 + (leftOverFlow < 0 ? leftOverFlow * -1 : 0)
     
     const rightOverFlow = (pos.x + pos.width / 2) + (textBoxWidth / 2) - vw
-    const textBoxRightPadding = 40 + (rightOverFlow > 0 ? rightOverFlow : 0)
+    const textBoxRightPadding = 64 + (rightOverFlow > 0 ? rightOverFlow : 0)
     
     return {
       root: {
@@ -152,15 +147,15 @@ export class Circles extends Component {
   }
 
   close () {
-    if (this.content != null) {
-      this.setState({pos: this.content.getBoundingClientRect(), open: false})
+    if (this.props.element != null) {
+      this.setState({open: false})
     }
   }
 
   open () {
-    if (this.content != null) {
+    if (this.props.element != null) {
       this.handleResize()
-      this.setState({pos: this.content.getBoundingClientRect(), open: true})
+      this.setState({pos: this.props.element.getBoundingClientRect(), open: true})
     }
   }
 
@@ -179,9 +174,6 @@ export class Circles extends Component {
     }
     window.addEventListener('resize', this.handleResize)
     window.addEventListener('scroll', this.handleResize)
-    window.addEventListener('mousedown', this.handleClick, false)
-    this.content = findDOMNode(this.props.element)
-    this.setState({pos: this.content.getBoundingClientRect()})
     this.updateInterval = setInterval(() => {
       if (this.props.open) {
         this.handleResize()
@@ -190,22 +182,15 @@ export class Circles extends Component {
   }
 
   getComponentPosition () {
-    if (!!this.content) {
-      const pos = this.content.getBoundingClientRect()
-      return pos;
-    } else {
-      return {
-        top: 0, left: 0, width: 0, right: 0, height: 0, height: 0, bottom: 0
-      }
+    if (!!this.props.element && typeof(this.props.element.getBoundingClientRect) === "function") {
+      return this.props.element.getBoundingClientRect();
     }
   }
 
   componentWillUnmount () {
-    window.removeEventListener('resize', this.handleResize)
-    window.removeEventListener('scroll', this.handleResize)
-    window.removeEventListener('mousedown', this.handleClick, false)
-    clearInterval(this.updateInterval)
-    this.content = null
+    window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('scroll', this.handleResize);
+    clearInterval(this.updateInterval);
   }
 
   render () {
@@ -214,13 +199,14 @@ export class Circles extends Component {
       return null;
     }
     return (
-      <div ref={node => this.node = node} style={styles.root}>
+      <ClickAwayListener onClickAway={this.props.onClose}>
+      <div id="fdpromptcirclesroot" ref={node => this.node = node} style={styles.root}>
         <div style={styles.circles}>
           <div style={styles.outerCircle}>
           </div>
         </div>
         <div style={styles.textBox}>
-          <Typography variant='h6' style={{color: 'white'}}>{this.props.title}</Typography><br/>
+          <Typography variant='h5' style={{color: 'white'}}>{this.props.title}</Typography><br/>
           <Typography variant='body1' style={{color: 'white'}}>{this.props.description}</Typography>
         </div>
         <div style={styles.pulseOuterCircle}/>
@@ -230,13 +216,12 @@ export class Circles extends Component {
             { this.props.open && this.props.children }
         </div>
       </div>
+      </ClickAwayListener>
     )
   }
 }
 
 Circles.propTypes = {
-  /** Fired when the the prompt is visible and clicked. */
-  onClose: PropTypes.func.isRequired,
   /** Override the inline-styles of the circles element. */
   style: PropTypes.object,
   /** Defines the title text **/
